@@ -1,0 +1,35 @@
+# LLM 配置模板: 复制为 models.yaml 并填入真实 key.
+# model 传参格式: "<provider>/<model_name>", 如 "seed/glm-5.2".
+
+default: seed/glm-5.2
+
+models:
+  seed:
+    api_key: <YOUR_ARK_KEY>
+    base_url: https://ark.cn-beijing.volces.com/api/plan/v3
+    glm-5.2:
+      model: glm-5.2
+      max_context: 1048576
+      extra:
+        reasoning: {effort: high}
+        store: true
+    doubao-turbo:
+      model: doubao-seed-2.1-turbo
+      max_context: 256000
+      extra: {store: true}
+
+  ali:
+    api_key: <YOUR_ALI_KEY>
+    base_url: https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+    glm-5.2:
+      model: glm-5.2
+      max_context: 1048576
+      extra: {}
+    qwen3.7-max:
+      model: qwen3.7-max
+      max_context: 1048576
+      extra:
+        reasoning: {effort: high}
+      tools:
+        - {type: web_search}
+        - {type: web_extractor}

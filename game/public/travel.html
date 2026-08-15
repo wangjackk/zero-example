@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中国旅游地图</title>
+<style>
+  body { margin: 0; background: #0a0e27; color: #fff; font-family: 'Segoe UI', sans-serif; }
+  #app { display: flex; height: 100vh; }
+  #map { flex: 1; }
+  #panel {
+    width: 440px; background: #141b3d; border-left: 1px solid #1e2a5a;
+    padding: 20px; overflow-y: auto; display: flex; flex-direction: column;
+  }
+  #panel h2 { color: #00d2ff; margin: 0 0 4px; font-size: 18px; }
+  #panel .subtitle { color: #555; font-size: 12px; margin-bottom: 12px; }
+  .tip-card {
+    background: #1a2340; border: 1px solid #1e2a5a; border-radius: 10px;
+    padding: 16px; margin-bottom: 12px; animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  .tip-card .place { color: #00d2ff; font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+  .tip-card .addr { color: #555; font-size: 11px; margin-bottom: 8px; }
+  .tip-card .content { color: #c0c8e0; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
+  .tip-card .loading { color: #4fc3f7; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 0.5 } 50% { opacity: 1 } }
+  .tip-card .tag { display: inline-block; background: #2a3a5a; color: #8b9fd4; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-right: 4px; margin-top: 8px; }
+  .hint { color: #555; font-size: 13px; margin-top: auto; text-align: center; line-height: 1.6; }
+  #search-box { margin-bottom: 12px; display: flex; gap: 8px; }
+  #search-box input { flex: 1; background: #1a2340; border: 1px solid #1e2a5a; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 14px; }
+  #search-box button { background: #3a7bd5; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  #search-box button:hover { background: #00d2ff; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <div id="panel">
+    <h2>🗺️ 中国旅游推荐</h2>
+    <div class="subtitle">点击地图任意位置 · 或搜索地名</div>
+    <div id="search-box">
+      <input id="search-input" placeholder="搜索城市/景点..." />
+      <button onclick="doSearch()">🔍</button>
+    </div>
+    <div id="tips"></div>
+    <div class="hint" id="hint">👆 点击地图任意位置<br>获取 AI 旅游推荐</div>
+  </div>
+</div>
+<script src="https://webapi.amap.com/maps?v=2.0&key=f9c35efab03e9995bb91fdaaa041e7f3&plugin=AMap.Geocoder,AMap.PlaceSearch,AMap.AutoComplete"></script>
+<script>
+const map = new AMap.Map('map', {
+  zoom: 5, center: [105, 35],
+  mapStyle: 'amap://styles/dark',
+  viewMode: '3D',
+  pitch: 20,
+});
+const geocoder = new AMap.Geocoder({ extensions: 'base' });
+const tipsEl = document.getElementById('tips');
+const hintEl = document.getElementById('hint');
+let markers = [];
+let clickId = 0;
+
+// WebSocket
+let ws = null;
+function connectWS() {
+  ws = new WebSocket('ws://127.0.0.1:9101/ws');
+  ws.onmessage = (ev) => {
+    const data = JSON.parse(ev.data);
+    if (data.type === 'travel_tip') {
+      const tip = JSON.parse(data.data);
+      const cards = tipsEl.querySelectorAll('.tip-card');
+      for (const c of cards) {
+        if (c.querySelector('.loading')) {
+          c.innerHTML = '<div class="place">'+tip.place+'</div>' +
+            '<div class="addr">'+(tip.coords||'')+'</div>' +
+            '<div class="content">'+tip.content+'</div>' +
+            (tip.tags ? '<div>'+tip.tags.map(t=>'<span class="tag">'+t+'</span>').join('')+'</div>' : '');
+          break;
+        }
+      }
+    }
+  };
+  ws.onclose = () => setTimeout(connectWS, 2000);
+}
+connectWS();
+
+function requestTip(lng, lat, placeName, addr) {
+  clickId++;
+  const id = clickId;
+  window._lastClickId = id;
+  window._lastPlace = placeName;
+  const card = document.createElement('div');
+  card.className = 'tip-card';
+  card.dataset.id = id;
+  card.dataset.place = placeName;
+  card.innerHTML = '<div class="place">'+placeName+'</div><div class="addr">'+addr+'</div><div class="loading">🤖 AI 正搜索 '+placeName+' 的旅游信息...</div>';
+  tipsEl.prepend(card);
+  hintEl.style.display = 'none';
+  fetch('http://127.0.0.1:7780/agents/world/run/send_message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to: 'prime_5', message: '[travel] 用户点击了: ' + placeName + ' (' + addr + ') 坐标:' + lat.toFixed(4) + ',' + lng.toFixed(4) + '，请推荐当地旅游建议' }),
+  });
+}
+
+map.on('click', async (e) => {
+  const lng = e.lnglat.getLng(), lat = e.lnglat.getLat();
+  const marker = new AMap.Marker({ position: [lng, lat], map: map });
+  markers.push(marker);
+  if (markers.length > 8) { map.remove(markers.shift()); }
+
+  // 用高德 REST API 逆地理编码 (不依赖 JS SDK Geocoder 插件)
+  let placeName = '', addr = lat.toFixed(4) + ', ' + lng.toFixed(4);
+  try {
+    const res = await fetch('https://restapi.amap.com/v3/geocode/regeo?location='+lng+','+lat+'&key=f9c35efab03e9995bb91fdaaa041e7f3&extensions=base');
+    const data = await res.json();
+    if (data.status === '1' && data.regeocode) {
+      const ac = data.regeocode.addressComponent;
+      const parts = [ac.province, ac.city || ac.district, ac.district, ac.township].filter(Boolean);
+      placeName = [...new Set(parts)].join(' · ') || data.regeocode.formatted_address;
+      addr = data.regeocode.formatted_address || addr;
+    }
+  } catch(err) { console.error('geocode failed', err); }
+  if (!placeName) placeName = addr;
+  marker.setLabel({ content: placeName, direction: 'top' });
+  requestTip(lng, lat, placeName, addr);
+});
+
+// 搜索
+function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  const placeSearch = new AMap.PlaceSearch({ pageSize: 1 });
+  placeSearch.search(q, (status, result) => {
+    if (status === 'complete' && result.poiList.pois.length > 0) {
+      const poi = result.poiList.pois[0];
+      map.setZoomAndCenter(12, [poi.location.lng, poi.location.lat]);
+      const marker = new AMap.Marker({ position: [poi.location.lng, poi.location.lat], map: map });
+      markers.push(marker);
+      if (markers.length > 8) { map.remove(markers.shift()); }
+      marker.setLabel({ content: poi.name, direction: 'top' });
+      requestTip(poi.location.lng, poi.location.lat, poi.name, poi.address || poi.city);
+    }
+  });
+}
+document.getElementById('search-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+</script>
+</body>
+</html>
