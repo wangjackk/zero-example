@@ -1,6 +1,6 @@
 """Act -- agent 动作执行管线(XmlRoutine 子类,流式 yield 工具子结果).
 
-对标老版 D:\\shell\\zero\\routines\\core\\act\\act.py,kshell 重实现:
+zero 重实现:
 
 - agent push 一个 ``act`` 子,LLM 流式输出 XML body 经 ``send`` 喂给 act 的 ``on_message``
   (走 XmlRoutine 基类 reorder -> parser -> body_shell push 工具子).
@@ -8,10 +8,10 @@
   从 queue 拉 yield 给父 agent(``async for res in act_handle``).
 - body_shell done(body 流终结 + 全工具子 done)-> run 退出 -> act stopped.
 
-hook 写法对齐老版:``on_body_chunk``(ABORTED 透传)/``on_xml_event``(ChildOpen 失败 put error)
-/``on_xml_event``(ChildOpen 后设 on_stopped_handler)/``on_body_shell_done``(set _body_done).区别于老版:无
-BodyWriter(agent 直接 send body);顶层裸文本 ``on_body_text`` 留 hook(基类 no-op,老版
-push output 子说话依赖 output routine,kshell 版子类按需 override).
+hook 写法对齐:``on_body_chunk``(ABORTED 透传)/``on_xml_event``(ChildOpen 失败 put error)
+/``on_xml_event``(ChildOpen 后设 on_stopped_handler)/``on_body_shell_done``(set _body_done).区别于:无
+BodyWriter(agent 直接 send body);顶层裸文本 ``on_body_text`` 留 hook(基类 no-op,
+push output 子说话依赖 output routine,zero 版子类按需 override).
 """
 import asyncio
 from typing import Any, Dict
@@ -100,10 +100,10 @@ class Act(XmlRoutine):
     async def on_body_chunk(self, chunk: BodyChunk) -> None:
         """ABORTED 时清理(本次无 text_writer,no-op),其余透传基类默认分发.
 
-        对标老版 Act.on_body_chunk:ABORTED 额外关 text_writer(老版有,kshell 版留空).
+        对标 Act.on_body_chunk:ABORTED 额外关 text_writer(有,zero 版留空).
         """
         if chunk.kind is BodyChunkKind.ABORTED:
-            # 无 text_writer(output routine 留后续),这里 no-op;保留 hook 形态对齐老版.
+            # 无 text_writer(output routine 留后续),这里 no-op;保留 hook 形态对齐.
             pass
         await super().on_body_chunk(chunk)
 
@@ -119,7 +119,7 @@ class Act(XmlRoutine):
         tool routine 需要的其他信息通过 get_agent_rid 查 rid 后 ctx.req(rid, 'agent_state') 反向获取.
 
         失败的 child scope(基类 push 抛异常)捕获后 put 一条 error 结果,不让整轮崩--
-        对标老版 Act.on_xml_event 的 try/except.后续 ChildBody/ChildClose 对该标签成 no-op
+        对标 Act.on_xml_event 的 try/except.后续 ChildBody/ChildClose 对该标签成 no-op
         (基类 _cur_handle 没设上).
         """
         if isinstance(ev, ChildOpen) and self._agent_id:
@@ -177,7 +177,7 @@ class Act(XmlRoutine):
         """async generator:yield 每个工具子结果给父 agent.
 
         body_shell done(_body_done)+ queue drain 后退出.event-driven 等(queue.get 或
-        _body_done.wait 哪个先就绪),避免 polling 延迟--对标老版 _yield_done_handles.
+        _body_done.wait 哪个先就绪),避免 polling 延迟--对标 _yield_done_handles.
 
         注意 ``asyncio.wait`` 被 cancel 时**不会**取消内部 task(Python 文档行为),
         需 try/finally 手动 cancel--否则 react 被打断(_cancel_react cancel _run_react)

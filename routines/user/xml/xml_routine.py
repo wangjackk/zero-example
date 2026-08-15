@@ -1,12 +1,12 @@
-﻿"""XmlRoutine -- message 驱动的 XML body 编排器(对标老版 D:\\shell\\...\\core\\routine.py).
+"""XmlRoutine -- message 驱动的 XML body 编排器.
 
-hook 写法对齐老版(子类 override 的 API 一致),内部驱动不同:
+hook 写法对齐(子类 override 的 API 一致),内部驱动不同:
 
-- **老版**:框架 wire body.chunk -> ``on_body_chunk(BodyChunk)``.
-- **kshell**:on_message 收 ``{text,id}`` -> reorder -> _parse_loop 构造 BodyChunk ->
+- **参考实现**:框架 wire body.chunk -> ``on_body_chunk(BodyChunk)``.
+- **本实现**:on_message 收 ``{text,id}`` -> reorder -> _parse_loop 构造 BodyChunk ->
   ``on_body_chunk``.on_body_chunk 成 reorder 后,parser 前的统一入口.
 
-双 shell(body + normal)实例隔离(老版用 shell_id 路由,kshell 用 shell_id 区分 push):
+双 shell(body + normal)实例隔离(参考实现用 shell_id 路由,本实现用 shell_id 区分 push):
 - **body_shell**(``shell_id='body'``):XML body 解析派生的 push 走这(``on_xml_event`` 默认派发).
   ChildOpen -> ``body_shell.push`` 拿 handle(父在 ``on_xml_event`` 里自接:设 stopped 回调 / 收 handle 列表);ChildBody -> ``send`` 给当前子(带 id)
   ``shell_id='body'``);ChildBody -> ``send`` 给子;ChildClose -> 给子发 ``_eof``.
@@ -20,7 +20,7 @@ body 流来源:本 routine 的 ``on_message``.父 / LLM 流式 ``send(rid, {'tex
 拉有序 chunk 构造 BodyChunk 驱动 ``on_body_chunk``.
 
 模块串并行:Shell ``_Entry._run`` 处理(等冲突左兄弟 stop 释放模块后再 start;不冲突
-并行)--对标老版 Go Shell 的 ``CanBlockRightSibling``.kernel TryAcquire 是底层正确性兜底.
+并行)--对标 Shell 的 ``CanBlockRightSibling``.kernel TryAcquire 是底层正确性兜底.
 """
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ class XmlRoutine(Routine):
 
     meta = {'description': 'XML body 编排器(message 驱动,双 shell)'}
 
-    # body_shell 的 shell_id(对标老版 BODY_SHELL_ID='body').normal_shell 用 'default'.
+    # body_shell 的 shell_id(对标 BODY_SHELL_ID='body').normal_shell 用 'default'.
     # on_xml_event 里据 shell_id 区分 body 派生 push vs normal_shell;on_body_shell_done 按 shell_id 过滤.
     XML_BODY_SHELL_ID = 'body'
 
@@ -91,7 +91,7 @@ class XmlRoutine(Routine):
         # complete → ondone 不触发 → 不 request_stop,让 run() 自然完成.
         # 开闭标签(<tag></tag> / <tag><child/></tag>)才发 _eof.
         self._cur_self_closing: bool = False
-        # text segment 聚合状态(对标老版):连续 Text event 合成一个 segment,
+        # text segment 聚合状态:连续 Text event 合成一个 segment,
         # N 次 is_last=False + 1 次 is_last=True(_close_text_segment 发聚合尾包).
         self._in_text_segment: bool = False
         self._text_buf: list = []
@@ -127,18 +127,18 @@ class XmlRoutine(Routine):
             self._parse_task.cancel()
 
     # ------------------------------------------------------------------
-    # body hook(对标老版,子类可 override)
+    # body hook(对标,子类可 override)
     # ------------------------------------------------------------------
 
     async def on_body_chunk(self, chunk: BodyChunk) -> None:
         """body 流事件分发:按 ``chunk.kind`` 分发到数据帧 / 流收口 / 打断三条路径.
 
-        默认实现(对标老版):
+        默认实现:
             CHUNK -> ``_on_body_data``:喂 parser,分发它产出的 event.
             STREAM_CLOSED -> ``_on_body_stream_closed``:drain parser + 关 text segment.
             ABORTED -> ``_on_body_aborted``:丢 parser + 清 writer 状态.
 
-        kshell 内部由 _parse_loop 从 reorder 队列构造:on_message 收 {text,id} -> CHUNK;
+        zero 内部由 _parse_loop 从 reorder 队列构造:on_message 收 {text,id} -> CHUNK;
         {_eof,id} -> STREAM_CLOSED.ABORTED 触发时机留后续(本次定义+默认实现处理).
         子类 override(如 Act)想拦截 body 事件在此分流,其余 ``await super().on_body_chunk(chunk)``.
         """
@@ -195,7 +195,7 @@ class XmlRoutine(Routine):
 
     async def push(self, name: str,
                    kwargs: Optional[Dict[str, Any]] = None) -> 'RoutineHandle':
-        """代码主动 push 到 normal_shell(对标老版 self.push = normal shell).
+        """代码主动 push 到 normal_shell(对标 self.push = normal shell).
 
         区别于 ``self.submit``(裸 submit 不经编排):push 进 normal_shell 享受串并行
         编排(冲突串行,不冲突并行).子类业务编排用本方法,XML body 派生的 push
@@ -212,7 +212,7 @@ class XmlRoutine(Routine):
 
         {text,id} -> BodyChunk(CHUNK, text);{_eof,id} -> BodyChunk(STREAM_CLOSED).
         on_body_chunk 默认实现内部 feed parser -> _handle_xml_event -> on_xml_event.
-        子类 override on_body_chunk 可拦截(对标老版框架 wire body.chunk -> on_body_chunk).
+        子类 override on_body_chunk 可拦截(对标框架 wire body.chunk -> on_body_chunk).
         """
         assert self._reorder_q is not None and self._body_shell is not None
         try:
@@ -243,13 +243,13 @@ class XmlRoutine(Routine):
             self._body_shell.complete()
 
     # ------------------------------------------------------------------
-    # on_body_chunk 默认实现内部(对标老版 _on_body_data / _on_body_stream_closed / _on_body_aborted)
+    # on_body_chunk 默认实现内部(对标 _on_body_data / _on_body_stream_closed / _on_body_aborted)
     # ------------------------------------------------------------------
 
     async def _on_body_data(self, chunk: str) -> None:
         """CHUNK:喂 parser,分发它产出的事件.
 
-        实现要点(对标老版):``parser.feed`` 是同步算法,一次性 ``list(...)`` 物化整批 event
+        实现要点:``parser.feed`` 是同步算法,一次性 ``list(...)`` 物化整批 event
         后再 ``await``.不能边 iterate 边 await--``self._parser`` 是实例级共享状态,await
         让出期间若并发改动 parser,后续 event 会被吃掉.
         """
@@ -262,7 +262,7 @@ class XmlRoutine(Routine):
     async def _on_body_stream_closed(self) -> None:
         """STREAM_CLOSED:drain parser 剩余(合成 ChildClose + SelfClose)+ 关 text segment.
 
-        实现要点(对标老版):``parser.close()`` 先一次性物化成 list,并立即把
+        实现要点:``parser.close()`` 先一次性物化成 list,并立即把
         ``self._parser`` 置 ``None`` 释放共享状态,之后再 ``await``.这样 await 让出期间
         若有别的协程再调 ``on_body_chunk(CHUNK)``,它会创建一份新的 parser,不污染旧批 events.
         """
@@ -279,9 +279,9 @@ class XmlRoutine(Routine):
         self._body_shell.complete()
 
     async def _on_body_aborted(self) -> None:
-        """ABORTED:丢 parser + 清 text 聚合状态(对标老版).
+        """ABORTED:丢 parser + 清 text 聚合状态.
 
-        不自动 close body_shell--由 stop 流程的 interrupt 统一负责(对标老版 Invariant C).
+        不自动 close body_shell--由 stop 流程的 interrupt 统一负责(对标 Invariant C).
         """
         self._parser = None
         self._in_text_segment = False
@@ -295,9 +295,9 @@ class XmlRoutine(Routine):
     # ------------------------------------------------------------------
 
     async def on_xml_event(self, ev: Event) -> None:
-        """对 XML 结构事件的解释入口;默认透传 body shell(对标老版).
+        """对 XML 结构事件的解释入口;默认透传 body shell.
 
-        默认(用 send message 灌子 body,不是老版 BodyWriter--内部实现差异):
+        默认(用 send message 灌子 body,不是 BodyWriter--内部实现差异):
             ``ChildOpen`` -> ``body_shell.push`` 拿 handle(存 ``_cur_handle``;子类 override
             本方法可在 super() 后对 handle 设 stopped 回调 / 收集)
             ``ChildBody`` -> ``send`` 给当前子(带 id)
@@ -335,7 +335,7 @@ class XmlRoutine(Routine):
             return
 
     # ------------------------------------------------------------------
-    # internal dispatch(对标老版 _handle_xml_event + _close_text_segment)
+    # internal dispatch(对标 _handle_xml_event + _close_text_segment)
     # ------------------------------------------------------------------
 
     async def _close_text_segment(self) -> None:

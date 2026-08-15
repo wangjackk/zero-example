@@ -1,7 +1,6 @@
 """zero 应用入口:注册 routines + 打 banner + 起 routine server / client.
 
-参考 D:\\shell\\zero\\main.py,但用 kshell 自带的精简 routine SDK(``routine`` 包,
-非老项目的 ``routine3`` wheel).骨架阶段不带 inference / output 等业务
+基于精简 routine SDK(``routine`` 包).骨架阶段不带 inference / output 等业务
 链路----只验注册 + 打印 + 起 server 通.
 
 HTTP + WS 前门由 ``HttpServer`` passive routine 自动起(kernel auto-start),

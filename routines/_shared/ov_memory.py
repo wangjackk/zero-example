@@ -1,7 +1,7 @@
 """OpenViking 长期记忆推送 + 文件操作 (业务自管 task,不用 ctx.spawn).
 
 职责:
-  - 启动时 init OV client + 用 kshell session_id 创建 OV session (1:1 对齐)
+  - 启动时 init OV client + 用 业务 session_id 创建 OV session (1:1 对齐)
   - 每 N 轮增量 add_message 到 OV (不 commit, 只在会话边界才 commit)
   - resume 时读游标文件跳过已推的历史 (避免重推)
   - agent 关闭: 推剩余 + commit 归档 + close (agent=session, 关闭即 session 结束)
@@ -20,16 +20,16 @@ OV 文件夹结构:
   ├── memories/                          # 用户记忆 (全局共享)
   ├── peers/claude/memories/             # 所有 claude agent 共用的私有记忆
   │   └── summaries/{session_id}.md      # 各 session 的压缩摘要
-  ├── sessions/                          # OV session (跟 kshell session 1:1 对齐)
+  ├── sessions/                          # OV session (跟 业务 session 1:1 对齐)
   ├── skills/
   └── resources/
 
 session 对齐:
-  - OV session_id = kshell session_id (create_session 时外部传入)
+  - OV session_id = 业务 session_id (create_session 时外部传入)
   - agent = session: agent 关闭即 session 结束, finalize 里 commit 归档
 
 agent 侧只持有 self._ov 一个实例 + 调用点:
-  - run() 启动调 init_async(kshell_session_id)
+  - run() 启动调 init_async(session_id)
   - react() 里调 tick_and_maybe_push(items)  (只 add_message, 不 commit)
   - run() finally 调 finalize(items)  (推剩余 + commit 归档 + close)
   - Read/Write/Glob/Grep 工具映射 viking:// → ov_read/ov_write/ov_glob/ov_grep handler
@@ -66,7 +66,7 @@ class OVMemory:
         peer_id: str = 'claude',
     ) -> None:
         self.client: Any = None
-        # OV session_id 跟 kshell session_id 1:1 对齐 (外部传入, 不自动生成)
+        # OV session_id 跟 业务 session_id 1:1 对齐 (外部传入, 不自动生成)
         self.session_id: str | None = None
         self._task: asyncio.Task | None = None
         self._init_task: asyncio.Task | None = None
@@ -79,8 +79,8 @@ class OVMemory:
         self._peer_id = peer_id
         self._pending_config: dict[str, Any] | None = config
 
-    async def init_async(self, kshell_session_id: str) -> None:
-        """非阻塞初始化 OV client + 用 kshell session_id 创建 OV session.
+    async def init_async(self, session_id: str) -> None:
+        """非阻塞初始化 OV client + 用 业务 session_id 创建 OV session.
 
         网络请求 (initialize + get_session) 在后台 task 跑, 不阻塞 agent 启动.
         跑完前 enabled=False, tick 跳过推送 (消息不丢, 下次 tick 推 _items 全部增量).
@@ -98,15 +98,15 @@ class OVMemory:
             _log.warning('ov_config set but no api_key (env OPENVIKING_API_KEY missing), OV disabled')
             return
         # 先记录 session_id, 这样 enabled 检查只需看 client
-        self.session_id = kshell_session_id
+        self.session_id = session_id
 
         async def _bg_init():
             try:
-                c = await asyncio.to_thread(self._build_client, config, api_key, kshell_session_id)
+                c = await asyncio.to_thread(self._build_client, config, api_key, session_id)
                 self.client = c
                 self._push_every_n = int(config.get('push_every_n_turns', 5))
                 _log.info('ov initialized (peer=%s, ov_session=%s)',
-                          self._peer_id, kshell_session_id)
+                          self._peer_id, session_id)
             except Exception as exc:
                 _log.warning('ov init failed: %s (OV disabled)', exc)
                 self.client = None
@@ -120,7 +120,7 @@ class OVMemory:
         c = SyncHTTPClient(
             url=config.get('url', 'https://api.vikingdb.cn-beijing.volces.com/openviking'),
             api_key=api_key,
-            user=config.get('user', 'kshell'),
+            user=config.get('user', 'zero'),
             timeout=float(config.get('timeout', 120.0)),
         )
         c.initialize()

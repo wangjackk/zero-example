@@ -1,4 +1,4 @@
-"""music - 播放本地音乐文件,body 派生子边放边跑(对标老版).
+"""music - 播放本地音乐文件,body 派生子边放边跑.
 
 继承 XmlRoutine:``<music><dance duration="3"/></music>`` 边放音乐边跳舞.
 dance done -> body_shell done -> request_stop -> cancel_main_task -> player.play

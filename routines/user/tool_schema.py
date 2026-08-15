@@ -1,7 +1,7 @@
 """tool_schema -- 把 routine 类转成 LLM function-calling schema.
 
 用 meta['input_schema'](Pydantic 模型 -> 精确 JSON Schema).新框架 routine 都有
-input_schema(对标 react_agent 路径),无需老版 signature 反射降级.
+input_schema(对标 react_agent 路径),无需 signature 反射降级.
 """
 from __future__ import annotations
 

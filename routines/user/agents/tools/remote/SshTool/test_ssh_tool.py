@@ -1,8 +1,7 @@
 """SshTool 自测脚本(不连真实 SSH 服务器).
 
 运行:
-    cd D:/shell/zero
-    uv run python routines/user/claudecode/routines/remote/SshTool/test_ssh_tool.py
+    uv run python routines/user/agents/tools/remote/SshTool/test_ssh_tool.py
 """
 from __future__ import annotations
 

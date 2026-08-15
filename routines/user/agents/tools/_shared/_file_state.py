@@ -5,7 +5,7 @@
   - Edit / Write 校验 "已 read" + "mtime 未变",通过则无需额外 ask
 
 状态以 session_id(agent push 工具时注入 kwargs 的 SESSION_ID_KEY)为粒度隔离,
-避免多 agent 并发时互相污染.老版用 ctx.push_parent.id(routine3 基类),精简
+避免多 agent 并发时互相污染.用 ctx.push_parent.id(routine3 基类),精简
 routine 删了它,改由 agent 注入 SESSION_ID_KEY 进 kwargs.
 """
 from __future__ import annotations

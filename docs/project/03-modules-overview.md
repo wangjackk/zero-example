@@ -65,7 +65,7 @@
 
 ## user/xml/ —— XML 嵌套编排(legacy 兼容)
 
-对标老版 XML body 编排。message 驱动,双 shell(normal + body)。
+对标 XML body 编排。message 驱动,双 shell(normal + body)。
 
 | 类 | name | 模块 | 说明 |
 |---|---|---|---|

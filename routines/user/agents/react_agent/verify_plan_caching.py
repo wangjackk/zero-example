@@ -199,7 +199,7 @@ async def test_caching_field_rejected() -> bool:
 async def test_real_llmclient_round_trip() -> bool:
     """端到端验证:调用修改后的真实 LLMClient.stream(),确认 previous_response_id 链路通.
 
-    需要把 d:\\kshell\\routine 加进 sys.path 才能 import routine.logger.
+    需要把 d:\\zero\\routine 加进 sys.path 才能 import routine.logger.
     本测验证 llm.py 的修复(删掉 caching 注入,doubao extra 加 store=True)确实生效.
     """
     routine_root = Path(__file__).resolve().parents[4] / 'routine'

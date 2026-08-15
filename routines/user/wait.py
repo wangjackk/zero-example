@@ -1,9 +1,9 @@
-"""Wait -- 延时 / barrier routine(对标老版 ``wait`` 命令).
+"""Wait -- 延时 / barrier routine(对标 ``wait`` 命令).
 
 ``duration`` 秒后返回.无 duration 或 0 = 立即
 返回(纯 barrier).不占模块.
 
-在 ``Shell`` 编排里是**双向全局同步点**(对标老版 ``wait`` 命令):等所有
+在 ``Shell`` 编排里是**双向全局同步点**(对标 ``wait`` 命令):等所有
 左兄弟完成后自己跑,自己完成后再放行右兄弟----把编排切成"wait 前 / wait 后"
 两段.Shell 识别 ``wait`` name 给特殊待遇(无条件,不论 modules 是否冲突)::
 

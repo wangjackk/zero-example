@@ -1,6 +1,6 @@
 """TTS 包: Seed WS 双向流协议 + Speaker + SeedTTS + LocalSpeaker.
 
-从老版 D:\\shell\\zero\\routines\\core\\output\\tts 搬迁, 协议层无业务依赖.
+协议层无业务依赖.
 LocalSpeaker 用 sounddevice 本地播放 PCM, 三级流水线首帧即播.
 
 create_tts() 工厂懒加载单例 WS 连接 (SeedWSConnection + Speaker), 每次
@@ -30,15 +30,13 @@ def create_tts() -> SeedTTS:
     """返回一个 SeedTTS 实例, 共享全局 WS 连接 + Speaker.
 
     环境变量:
-      SEED_TTS_API_KEY     — 火山引擎 API Key (必填, 有默认开发值)
+      SEED_TTS_API_KEY     — 火山引擎 API Key (必填)
       SEED_TTS_SPEAKER_ID  — 音色 ID (可选, 默认 zh_female_xiaohe_uranus_bigtts)
       SEED_TTS_RESOURCE_ID — 模型版本 (可选, 默认 seed-tts-2.0)
     """
     global _conn, _speaker
     if _conn is None:
-        api_key     = os.environ.get(
-            "SEED_TTS_API_KEY", "19ca3ecd-18a6-4123-90d0-2cf08d0d17cb",
-        )
+        api_key     = os.environ.get("SEED_TTS_API_KEY", "")
         speaker_id  = os.environ.get(
             "SEED_TTS_SPEAKER_ID", "zh_female_xiaohe_uranus_bigtts",
         )

@@ -9,7 +9,7 @@
 ```
 zero/
 ├── main.py                   # 应用入口:注册 routines + 打 banner + 起 server/client
-├── shell.py                  # 业务侧编排 Shell(模块自动串并行,对标老版 Go Shell)
+├── shell.py                  # 业务侧编排 Shell(模块自动串并行,对标 Shell)
 ├── pyproject.toml            # 依赖声明(uv + path 依赖 routine)
 ├── modules/
 │   └── __init__.py           # 全局 module 常量(OUTPUT/UI/AUDIO/BODY)+ get_modules()
@@ -230,7 +230,7 @@ async def serve(addr: str, *, client: bool = False) -> None:
 
 ## 编排:Shell
 
-`zero/shell.py` 提供 `Shell` 类,业务侧模块自动串并行编排器(对标老版 Go `shell_scheduler_go/shell/shell.go`)。
+`zero/shell.py` 提供 `Shell` 类,业务侧模块自动串并行编排器。
 
 ```python
 from zero.shell import Shell

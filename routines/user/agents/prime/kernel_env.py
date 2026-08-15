@@ -27,8 +27,8 @@ _BOOTSTRAP_VERSION = 10  # v10: 去 --seed (无 pip), 扩 _BASE_DEPS 预装数�
 # prime 自带的 skills 目录 (prime 专用, 不走通用 builtin).
 PRIME_SKILLS_DIR = Path(__file__).resolve().parent / 'skills'
 
-# routine SDK 目录 (d:\kshell\routine): kernel_env.py 在 zero/routines/user/agents/prime/,
-# parents[4]=zero/, parents[5]=kshell/, 再进 routine/.
+# routine SDK 目录 (routine SDK 目录): kernel_env.py 在 zero/routines/user/agents/prime/,
+# parents[4]=zero/, parents[5]=仓库根/, 再进 routine/.
 _ROUTINE_SDK_DIR = PRIME_SKILLS_DIR.parents[5] / 'routine'
 
 

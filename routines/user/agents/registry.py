@@ -1,6 +1,6 @@
 """Agent + tool routines registration.
 
-取代老版 claudecode/__init__.py 的注册中心角色:
+取代 claudecode/__init__.py 的注册中心角色:
 聚合 tools/ + reactor/ + prime/ 的 routine 类, 统一注册.
 """
 from routine import Routines

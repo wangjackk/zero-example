@@ -26,7 +26,7 @@ _MANAGER_NAME = 'prime_agent_manager'
 _DEFAULT_OV_CONFIG: Dict[str, Any] = {
     'url': 'https://api.vikingdb.cn-beijing.volces.com/openviking',
     'api_key': 'ZGVmYXVsdA.ZGVmYXVsdA.YzhhNmQxZTBjYWE2ZmIzOGNmNzY3Y2Y0MThmOWFmNGZlNjhkMWM5YjE0NjljNzQwYThmNTFhNGI5MjMyNDRiYg',
-    'user': 'kshell',
+    'user': 'zero',
     'push_every_n_turns': 5,
 }
 

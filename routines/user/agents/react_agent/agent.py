@@ -1,7 +1,7 @@
 """ReactAgent -- reactive agent(ContextProvider 记忆 + 内置 LLM,每轮直推 act 子).
 
 - 直接继承 ``Routine``(被动常驻编排器,不收 XML body,不派生工具子)--
-  XmlRoutine 的 body_shell/parser/on_body_chunk 一套它都不用,继承是老版残留.
+  XmlRoutine 的 body_shell/parser/on_body_chunk 一套它都不用,继承是历史残留.
 - **记忆用 ReactContextProvider**(见 ``provider.py``):封装 Memory(sqlite 持久化)
   + OVMemory(OpenViking 长期记忆),默认启用 OV.
 - **每轮 react 直推一个 act 子**(submit+start+stop 直管,act 才是 XmlRoutine,
@@ -77,7 +77,7 @@ class ReactAgentInput(BaseModel):
     )
     ov_config: Optional[dict[str, Any]] = Field(
         None, description='OpenViking config. Keys: url, api_key (or env '
-        'OPENVIKING_API_KEY), user (default "kshell"), push_every_n_turns '
+        'OPENVIKING_API_KEY), user (default "zero"), push_every_n_turns '
         '(default 5). Defaults to manager-provided _DEFAULT_OV_CONFIG '
         '(long-term memory enabled by default).',
     )
@@ -432,7 +432,7 @@ class ReactAgent(Routine):
 
             # 每轮 react 直推一个 act 子(本轮唯一子--工具子由 act 的 body_shell
             # 派生,不经 agent).submit + start + stop 直管,无需 Shell(Shell 为多兄弟
-            # 排序/barrier 而设,单子纯开销).对标老 self.push('act')(老版走 routine 的 shell).
+            # 排序/barrier 而设,单子纯开销).对标 self.push('act')(走 routine 的 shell).
             # agent_id: act 在 push 工具子前注入, tool routine 通过 get_agent_rid
             # 查 rid 后 ctx.req(rid, 'agent_state') 反向获取 skill_dir 等信息.
             _t = _time.perf_counter()
@@ -733,7 +733,7 @@ class ReactAgent(Routine):
 
         走 ``ctx.hub.runtime.routines.get_routines()`` 拿已注册 routine 类列表
         (对标 HttpServer._list_routines 的既定路径),读 ``meta['input_schema']``
-        渲染.新框架 routine 都有 input_schema,无需老版 prompt_providers 的签名
+        渲染.新框架 routine 都有 input_schema,无需 prompt_providers 的签名
         反射降级.
         """
         try:
